@@ -14,11 +14,18 @@
                 this.activeRequestId = 0;
                 this.maskRequestInFlight = false;
                 this.pendingMaskUpdate = false;
+                this.modelWarmed = false;
+                this.isWarmingUp = false;
                 this.configDiv.innerHTML = `
                 <div class="image-editor-tool-block tool-block-nogrow">
                     <button class="basic-button id-clear-points">Clear Points</button>
                     <button class="basic-button id-clear-mask">Clear Mask</button>
                 </div>`;
+                let warmupStatusElem = document.createElement('span');
+                warmupStatusElem.className = 'id-sam2-status';
+                warmupStatusElem.style.cssText = 'display:none; margin-left:8px; opacity:0.8; font-style:italic;';
+                warmupStatusElem.textContent = 'Warming up SAM2 model...';
+                this.configDiv.querySelector('.image-editor-tool-block').appendChild(warmupStatusElem);
                 this.configDiv.querySelector('.id-clear-points').addEventListener('click', () => {
                     this.positivePoints = [];
                     this.negativePoints = [];
@@ -80,7 +87,46 @@
                 return true;
             }
 
+            setActive() {
+                super.setActive();
+                if (!this.modelWarmed && !this.isWarmingUp
+                        && currentBackendFeatureSet.includes('sam2')
+                        && this.editor.getFinalImageData?.()) {
+                    this.triggerWarmup();
+                }
+            }
+
+            triggerWarmup() {
+                this.isWarmingUp = true;
+                let statusElem = this.configDiv.querySelector('.id-sam2-status');
+                if (statusElem) { statusElem.style.display = ''; }
+                try {
+                    let img = this.editor.getFinalImageData();
+                    let genData = getGenInput();
+                    genData['sampointimage'] = img;
+                    genData['images'] = 1;
+                    genData['prompt'] = '';
+                    delete genData['batchsize'];
+                    genData['donotsave'] = true;
+                    let cx = Math.floor((this.editor.realWidth || 64) / 2);
+                    let cy = Math.floor((this.editor.realHeight || 64) / 2);
+                    genData['sampositivepoints'] = JSON.stringify([{ x: cx, y: cy }]);
+                    makeWSRequestT2I('GenerateText2ImageWS', genData, data => {
+                        if (data.image || data.error) {
+                            this.modelWarmed = true;
+                            this.isWarmingUp = false;
+                            if (statusElem) { statusElem.style.display = 'none'; }
+                        }
+                    });
+                } catch (e) {
+                    this.modelWarmed = true;
+                    this.isWarmingUp = false;
+                    if (statusElem) { statusElem.style.display = 'none'; }
+                }
+            }
+
             onMouseDown(e) {
+                if (this.isWarmingUp) { return; }
                 if (e.button !== 0 && e.button !== 2) {
                     return;
                 }

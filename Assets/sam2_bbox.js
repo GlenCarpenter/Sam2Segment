@@ -16,9 +16,12 @@
                 this.requestSerial = 0;
                 this.activeRequestId = 0;
                 this.maskRequestInFlight = false;
+                this.modelWarmed = false;
+                this.isWarmingUp = false;
                 this.configDiv.innerHTML = `
                 <div class="image-editor-tool-block tool-block-nogrow">
                     <button class="basic-button id-clear-mask">Clear Mask</button>
+                    <span class="id-sam2-status" style="display:none; margin-left:8px; opacity:0.8; font-style:italic;">Warming up SAM2 model...</span>
                 </div>`;
                 this.configDiv.querySelector('.id-clear-mask').addEventListener('click', () => {
                     let maskLayer = this.editor.activeLayer && this.editor.activeLayer.isMask ? this.editor.activeLayer : this.editor.layers.find(layer => layer.isMask);
@@ -53,7 +56,46 @@
                 }
             }
 
+            setActive() {
+                super.setActive();
+                if (!this.modelWarmed && !this.isWarmingUp
+                        && currentBackendFeatureSet.includes('sam2')
+                        && this.editor.getFinalImageData?.()) {
+                    this.triggerWarmup();
+                }
+            }
+
+            triggerWarmup() {
+                this.isWarmingUp = true;
+                let statusElem = this.configDiv.querySelector('.id-sam2-status');
+                if (statusElem) { statusElem.style.display = ''; }
+                try {
+                    let img = this.editor.getFinalImageData();
+                    let genData = getGenInput();
+                    genData['sampointimage'] = img;
+                    genData['images'] = 1;
+                    genData['prompt'] = '';
+                    delete genData['batchsize'];
+                    genData['donotsave'] = true;
+                    let cx = Math.floor((this.editor.realWidth || 64) / 2);
+                    let cy = Math.floor((this.editor.realHeight || 64) / 2);
+                    genData['sambbox'] = JSON.stringify([cx - 1, cy - 1, cx + 1, cy + 1]);
+                    makeWSRequestT2I('GenerateText2ImageWS', genData, data => {
+                        if (data.image || data.error) {
+                            this.modelWarmed = true;
+                            this.isWarmingUp = false;
+                            if (statusElem) { statusElem.style.display = 'none'; }
+                        }
+                    });
+                } catch (e) {
+                    this.modelWarmed = true;
+                    this.isWarmingUp = false;
+                    if (statusElem) { statusElem.style.display = 'none'; }
+                }
+            }
+
             onMouseDown(e) {
+                if (this.isWarmingUp) { return; }
                 if (e.button !== 0) {
                     return;
                 }
@@ -86,6 +128,7 @@
             }
 
             onMouseUp(e) {
+                if (this.isWarmingUp) { return; }
                 if (this.isDrawing) {
                     this.isDrawing = false;
                     this.requestMaskUpdate();
