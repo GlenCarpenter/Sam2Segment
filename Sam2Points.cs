@@ -1,9 +1,3 @@
-using Newtonsoft.Json.Linq;
-using SwarmUI.Media;
-using SwarmUI.Text2Image;
-using SwarmUI.Utils;
-using SwarmUI.Builtin_ComfyUIBackend;
-
 namespace Sam2Segment;
 
 public partial class Sam2Segment

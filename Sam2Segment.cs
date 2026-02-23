@@ -1,9 +1,3 @@
-using SwarmUI.Core;
-using SwarmUI.Media;
-using SwarmUI.Text2Image;
-using SwarmUI.Utils;
-using SwarmUI.Builtin_ComfyUIBackend;
-
 // NOTE: Namespace must NOT contain "SwarmUI" (this is reserved for built-ins)
 namespace Sam2Segment;
 
