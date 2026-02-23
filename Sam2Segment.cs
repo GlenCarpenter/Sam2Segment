@@ -1,4 +1,9 @@
 // NOTE: Namespace must NOT contain "SwarmUI" (this is reserved for built-ins)
+using Newtonsoft.Json.Linq;
+using SwarmUI.Builtin_ComfyUIBackend;
+using SwarmUI.Core;
+using SwarmUI.Text2Image;
+using SwarmUI.Utils;
 namespace Sam2Segment;
 
 public partial class Sam2Segment : Extension
