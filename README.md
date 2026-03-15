@@ -1,3 +1,7 @@
+# Deprecation notice
+
+This extension will no longer be supported as this feature is now part of the main application. 
+
 # Sam2Segment Extension
 
 Adds a SAM2 point-based and bounding box mask tool to the image editor.
